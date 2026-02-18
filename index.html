@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Check-in Cliente</title>
+</head>
+<body>
+  <h2>Check-in Vendedor</h2>
+
+  <input id="vendedor" placeholder="Vendedor" /><br><br>
+  <input id="id_cliente" placeholder="ID do Cliente" /><br><br>
+
+  <button onclick="checkin()">Fazer Check-in</button>
+
+  <script>
+    function checkin() {
+      if (!navigator.geolocation) {
+        alert("Geolocalização não suportada");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          fetch("https://SEU_N8N/webhook/checkin", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              vendedor: document.getElementById("vendedor").value,
+              id_cliente: document.getElementById("id_cliente").value,
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              timestamp: new Date().toISOString(),
+              origem: "WEB_GPS"
+            })
+          })
+          .then(r => r.json())
+          .then(res => alert("Check-in enviado"))
+        },
+        err => alert("Erro ao obter localização"),
+        { enableHighAccuracy: true }
+      );
+    }
+  </script>
+</body>
+</html>
