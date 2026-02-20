@@ -41,7 +41,7 @@
           };
 
           // 3. Envio para o n8n
-          fetch("https://SEU_N8N/webhook-test/checkin", { // <-- Use /webhook-test/ para testar!
+          fetch("http://localhost:5678/webhook-test/check-in", { // <-- Use /webhook-test/ para testar!
             method: "POST",
             headers: { 
               "Content-Type": "application/json" 
