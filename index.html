@@ -31,12 +31,18 @@
       // 2. Solicita a posição
       navigator.geolocation.getCurrentPosition(
         position => {
+          // Lógica para data e hora (UTC-3)
+          const agora = new Date();
+          const dataSP = agora.toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+          const horaSP = agora.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false });
+
           const payload = {
             vendedor: vendedor,
             id_cliente: id_cliente,
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
-            timestamp: new Date().toISOString(),
+            data: dataSP,
+            horario: horaSP,
             origem: "WEB_GPS"
           };
 
