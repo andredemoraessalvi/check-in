@@ -5,180 +5,52 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Check-in Cliente</title>
   <style>
-  /* Reset e Configurações de Tela */
-* { 
-  margin: 0; 
-  padding: 0; 
-  box-sizing: border-box; 
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-}
+    /* CSS com Azul Marinho #00008B e Bordas 4px */
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+    body { background-color: #f0f2f5; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; position: relative; }
+    
+    .container {
+      background-color: #ffffff;
+      padding: 30px 25px;
+      border-radius: 4px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      z-index: 1;
+    }
 
-body { 
-  background-color: #f0f2f5; 
-  display: flex; 
-  flex-direction: column; /* Alinha container e footer verticalmente */
-  justify-content: center; 
-  align-items: center; 
-  min-height: 100vh; 
-  padding: 20px;
-  position: relative;
-}
+    .logo { width: 120px; margin-bottom: 20px; height: auto; }
+    h2 { font-size: 1.3rem; color: #1a1a2e; margin-bottom: 20px; font-weight: 600; }
+    label { display: block; text-align: left; font-size: 0.8rem; color: #666; margin-bottom: 4px; margin-left: 2px; }
 
-/* Container central */
-.container {
-  background-color: #ffffff;
-  padding: 30px 25px;
-  border-radius: 4px; /* Arredondamento reduzido */
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  max-width: 400px;
-  text-align: center;
-  z-index: 1;
-}
+    input, select {
+      width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #d1d5db; border-radius: 4px;
+      font-size: 16px; background-color: #fafafa; color: #333; outline: none; appearance: none;
+      transition: border-color 0.2s;
+    }
 
-.logo { 
-  width: 120px; 
-  margin-bottom: 20px; 
-  height: auto; 
-}
+    input:focus, select:focus { border-color: #00008B; box-shadow: 0 0 0 1px #00008B; }
 
-h2 { 
-  font-size: 1.3rem; 
-  color: #1a1a2e; 
-  margin-bottom: 20px; 
-  font-weight: 600;
-}
+    select {
+      background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org" width="20" height="20" viewBox="0 0 20 20"><path fill="%2300008B" d="M7 7l3-3 3 3m0 6l-3 3-3-3"/></svg>');
+      background-repeat: no-repeat; background-position: right 12px center; cursor: pointer;
+    }
 
-/* Labels discretas */
-label { 
-  display: block; 
-  text-align: left; 
-  font-size: 0.8rem; 
-  color: #666; 
-  margin-bottom: 4px; 
-  margin-left: 2px;
-}
+    #camera-wrapper {
+      width: 100%; background: #000; border-radius: 4px; overflow: hidden; margin-bottom: 15px;
+      aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center; border: 1px solid #d1d5db;
+    }
 
-/* Campos de entrada e seleção */
-input, select {
-  width: 100%;
-  padding: 14px;
-  margin-bottom: 15px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px; /* Arredondamento reduzido */
-  font-size: 16px; /* Impede zoom no mobile */
-  background-color: #fafafa;
-  color: #333;
-  outline: none;
-  appearance: none; /* Remove estilo padrão do navegador */
-  transition: border-color 0.2s;
-}
+    video, #photo-preview { width: 100%; height: 100%; object-fit: cover; }
+    #photo-preview { display: none; }
 
-/* Foco nos campos com Azul Marinho */
-input:focus, select:focus {
-  border-color: #00008B;
-  box-shadow: 0 0 0 1px #00008B;
-}
+    button { width: 100%; padding: 15px; border: none; border-radius: 4px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.2s; }
+    .btn-capture { background-color: #4b5563; color: white; margin-bottom: 10px; }
+    .btn-submit { background-color: #00008B; color: white; }
+    button:disabled { background-color: #cbd5e1; cursor: not-allowed; }
 
-/* Estilo do Dropdown (Seta customizada) */
-select {
-  background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org" width="20" height="20" viewBox="0 0 20 20"><path fill="%2300008B" d="M7 7l3-3 3 3m0 6l-3 3-3-3"/></svg>');
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  cursor: pointer;
-}
-
-select:disabled {
-  background-color: #eeeeee;
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-/* Área da Câmera */
-#camera-wrapper {
-  width: 100%;
-  background: #000;
-  border-radius: 4px; /* Arredondamento reduzido */
-  overflow: hidden;
-  margin-bottom: 15px;
-  position: relative;
-  aspect-ratio: 4/3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #d1d5db;
-}
-
-video, #photo-preview {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-#photo-preview { 
-  display: none; 
-}
-
-/* Botões */
-button {
-  width: 100%;
-  padding: 15px;
-  border: none;
-  border-radius: 4px; /* Arredondamento reduzido */
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s;
-}
-
-/* Botão Secundário (Tirar Foto) */
-.btn-capture { 
-  background-color: #4b5563; 
-  color: white; 
-  margin-bottom: 10px; 
-}
-
-.btn-capture:hover {
-  background-color: #374151;
-}
-
-/* Botão Principal (Azul Marinho) */
-.btn-submit { 
-  background-color: #00008B; 
-  color: white; 
-}
-
-.btn-submit:hover {
-  background-color: #000066;
-}
-
-button:disabled { 
-  background-color: #cbd5e1; 
-  cursor: not-allowed; 
-}
-
-button:active { 
-  transform: scale(0.98); 
-}
-
-/* Footer discreto */
-.dev-footer {
-  margin-top: 20px;
-  font-size: 0.65rem;
-  color: #9ca3af;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-
-/* Responsividade para telas muito pequenas */
-@media (max-width: 400px) {
-  .container { 
-    padding: 20px 15px; 
-  }
-  h2 {
-    font-size: 1.1rem;
-  }
-}
+    .dev-footer { margin-top: 20px; font-size: 0.65rem; color: #9ca3af; letter-spacing: 0.5px; text-transform: uppercase; }
   </style>
 </head>
 <body>
@@ -207,12 +79,16 @@ button:active {
   <button type="button" class="btn-capture" id="capture-btn">📸 Tirar Foto</button>
   <button onclick="checkin()" class="btn-submit" id="submit-btn" style="margin-top:10px">Finalizar Check-in</button>
 </div>
+
 <footer class="dev-footer">
     Desenvolvido por André Salvi
 </footer>
 
 <script>
-  const scriptURL = "https://script.google.com/macros/s/AKfycbyYXOW9rpUp-5m7bKKciiePr5RXhYdELswu44FXABPYCq2MDhBoOzPl_cve6g6CGB1A/exec"; // <--- COLOQUE A NOVA URL AQUI
+  // CONFIGURAÇÕES
+  const googleScriptURL = "https://script.google.com/macros/s/AKfycbyYXOW9rpUp-5m7bKKciiePr5RXhYdELswu44FXABPYCq2MDhBoOzPl_cve6g6CGB1A/exec";
+  const n8nWebhookURL = "https://andresalvi.app.n8n.cloud/webhook-test/check-in";
+
   const video = document.getElementById('video');
   const preview = document.getElementById('photo-preview');
   const captureBtn = document.getElementById('capture-btn');
@@ -221,9 +97,10 @@ button:active {
   let dadosGerais = {};
   let fotoBase64 = null;
 
+  // 1. Busca dados do Google (Apenas consulta)
   async function carregarDados() {
     try {
-      const response = await fetch(scriptURL);
+      const response = await fetch(googleScriptURL);
       dadosGerais = await response.json();
       selectRota.innerHTML = '<option value="">Selecione a Rota</option>';
       Object.keys(dadosGerais).sort().forEach(rota => {
@@ -251,10 +128,12 @@ button:active {
     }
   }
 
+  // 2. Lógica de Câmera
   async function startCamera() {
     try {
-      video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-    } catch (err) { alert("Câmera indisponível"); }
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      video.srcObject = stream;
+    } catch (err) { alert("Câmera não detectada."); }
   }
 
   captureBtn.addEventListener('click', () => {
@@ -266,27 +145,57 @@ button:active {
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth; canvas.height = video.videoHeight;
     canvas.getContext('2d').drawImage(video, 0, 0);
-    fotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
+    fotoBase64 = canvas.toDataURL('image/jpeg', 0.6); // Comprimido para n8n
     preview.src = fotoBase64; preview.style.display = 'block'; video.style.display = 'none';
     captureBtn.innerText = "🔄 Tirar Outra";
   });
 
+  // 3. Envio Direto para o n8n
   async function checkin() {
     const v = document.getElementById('vendedor').value;
     const r = selectRota.value;
     const c = selectCliente.value;
-    if (!v || !r || !c || !fotoBase64) return alert("Preencha tudo!");
-
     const btn = document.getElementById('submit-btn');
+
+    if (!v || !r || !c || !fotoBase64) return alert("Preencha tudo e tire a foto!");
+
     btn.disabled = true; btn.innerText = "Enviando...";
 
     navigator.geolocation.getCurrentPosition(async pos => {
-      const payload = { vendedor: v, rota: r, id_cliente: c, latitude: pos.coords.latitude, longitude: pos.coords.longitude, foto: fotoBase64, data: new Date().toLocaleDateString('sv-SE'), horario: new Date().toLocaleTimeString('pt-BR') };
+      // OBJETO COMPLETO QUE SERÁ RECEBIDO NO n8n
+      const payload = {
+        vendedor: v,
+        rota: r,
+        id_cliente: c,
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        foto: fotoBase64,
+        data: new Date().toLocaleDateString('sv-SE'),
+        horario: new Date().toLocaleTimeString('pt-BR'),
+        origem: "WEBAPP_DIRECT"
+      };
+
       try {
-        await fetch(scriptURL, { method: "POST", body: JSON.stringify(payload), mode: 'no-cors' });
-        alert("✅ Sucesso!"); location.reload();
-      } catch (e) { alert("Erro ao enviar"); btn.disabled = false; }
-    }, () => { alert("GPS necessário"); btn.disabled = false; });
+        const response = await fetch(n8nWebhookURL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+          alert("✅ Check-in enviado com sucesso!");
+          location.reload();
+        } else {
+          throw new Error();
+        }
+      } catch (e) {
+        alert("Erro ao conectar com n8n. Tente novamente.");
+        btn.disabled = false; btn.innerText = "Finalizar Check-in";
+      }
+    }, () => {
+      alert("GPS obrigatório.");
+      btn.disabled = false; btn.innerText = "Finalizar Check-in";
+    }, { enableHighAccuracy: true });
   }
 
   window.onload = () => { carregarDados(); startCamera(); };
