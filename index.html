@@ -2,135 +2,131 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Check-in Cliente</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-    .container { background-color: #ffffff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
-    .logo { display: block; margin: 0 auto 20px; width: 120px; height: auto; }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+    body { background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+    .container { background-color: #ffffff; padding: 30px 25px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+    .logo { width: 120px; margin-bottom: 20px; }
     h2 { font-size: 1.3rem; color: #1a1a2e; margin-bottom: 20px; }
-    input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; outline: none; }
-    
-    /* Estilos da Câmera */
-    #camera-container { width: 100%; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 12px; position: relative; aspect-ratio: 4/3; }
-    video { width: 100%; height: 100%; object-fit: cover; }
-    #photo-preview { width: 100%; border-radius: 8px; margin-bottom: 12px; display: none; }
-    
-    .btn-capture { background-color: #6b7280; margin-bottom: 12px; }
-    button { width: 100%; padding: 13px; background-color: #4a90e2; color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 5px; }
-    button:disabled { background-color: #ccc; cursor: not-allowed; }
+    input, select { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 16px; background-color: #fafafa; outline: none; appearance: none; }
+    select { background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org" width="20" height="20" viewBox="0 0 20 20"><path fill="gray" d="M7 7l3-3 3 3m0 6l-3 3-3-3"/></svg>'); background-repeat: no-repeat; background-position: right 12px center; }
+    #camera-wrapper { width: 100%; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 15px; aspect-ratio: 4/3; display: flex; }
+    video, #photo-preview { width: 100%; height: 100%; object-fit: cover; }
+    #photo-preview { display: none; }
+    button { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+    .btn-capture { background-color: #6b7280; color: white; margin-bottom: 10px; }
+    .btn-submit { background-color: #4a90e2; color: white; }
+    label { display: block; text-align: left; font-size: 0.8rem; color: #666; margin-bottom: 4px; }
   </style>
 </head>
 <body>
 
 <div class="container">
   <img src="imagem.png" alt="Logo" class="logo">
-  <h2>Dados do Check-in</h2>
+  <h2>Check-in de Visita</h2>
 
-  <input id="vendedor" placeholder="Vendedor" />
-  <input id="id_cliente" placeholder="ID do Cliente" />
-
-  <!-- Área da Câmera -->
-  <div id="camera-container">
-    <video id="video" autoplay playsinline></video>
-  </div>
-  <canvas id="canvas" style="display:none;"></canvas>
-  <img id="photo-preview" alt="Sua foto">
+  <input id="vendedor" type="text" placeholder="Nome do Vendedor">
   
-  <button type="button" class="btn-capture" id="capture-btn">Tirar Foto</button>
-  <button onclick="checkin()" id="submit-btn">Fazer Check-in</button>
+  <label>Rota:</label>
+  <select id="select_rota" onchange="atualizarClientes()">
+    <option value="">Carregando rotas...</option>
+  </select>
+
+  <label>Cliente:</label>
+  <select id="id_cliente" disabled>
+    <option value="">Selecione a rota primeiro</option>
+  </select>
+
+  <div id="camera-wrapper">
+    <video id="video" autoplay playsinline></video>
+    <img id="photo-preview">
+  </div>
+  
+  <button type="button" class="btn-capture" id="capture-btn">📸 Tirar Foto</button>
+  <button onclick="checkin()" class="btn-submit" id="submit-btn" style="margin-top:10px">Finalizar Check-in</button>
 </div>
 
 <script>
+  const scriptURL = "https://script.google.com/macros/s/AKfycbyYXOW9rpUp-5m7bKKciiePr5RXhYdELswu44FXABPYCq2MDhBoOzPl_cve6g6CGB1A/exec"; // <--- COLOQUE A NOVA URL AQUI
   const video = document.getElementById('video');
-  const canvas = document.getElementById('canvas');
   const preview = document.getElementById('photo-preview');
   const captureBtn = document.getElementById('capture-btn');
+  const selectRota = document.getElementById('select_rota');
+  const selectCliente = document.getElementById('id_cliente');
+  let dadosGerais = {};
   let fotoBase64 = null;
 
-  // Inicia a câmera automaticamente ao carregar
-  async function initCamera() {
+  async function carregarDados() {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: "environment" }, // Prioriza câmera traseira
-        audio: false 
+      const response = await fetch(scriptURL);
+      dadosGerais = await response.json();
+      selectRota.innerHTML = '<option value="">Selecione a Rota</option>';
+      Object.keys(dadosGerais).sort().forEach(rota => {
+        let opt = document.createElement('option');
+        opt.value = rota; opt.innerHTML = rota;
+        selectRota.appendChild(opt);
       });
-      video.srcObject = stream;
-    } catch (err) {
-      alert("Erro ao acessar câmera: Verifique as permissões.");
-      console.error(err);
+    } catch (e) {
+      selectRota.innerHTML = '<option value="">Erro ao carregar</option>';
     }
+  }
+
+  function atualizarClientes() {
+    const rota = selectRota.value;
+    selectCliente.innerHTML = '<option value="">Selecione o Cliente</option>';
+    if (rota && dadosGerais[rota]) {
+      selectCliente.disabled = false;
+      dadosGerais[rota].sort().forEach(c => {
+        let opt = document.createElement('option');
+        opt.value = c; opt.innerHTML = c;
+        selectCliente.appendChild(opt);
+      });
+    } else {
+      selectCliente.disabled = true;
+    }
+  }
+
+  async function startCamera() {
+    try {
+      video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    } catch (err) { alert("Câmera indisponível"); }
   }
 
   captureBtn.addEventListener('click', () => {
-    const context = canvas.getContext('2d');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    fotoBase64 = canvas.toDataURL('image/jpeg', 0.7); // Retorno em Base64
-    preview.src = fotoBase64;
-    preview.style.display = 'block';
-    document.getElementById('camera-container').style.display = 'none';
-    captureBtn.innerText = "Tirar outra foto";
-    
-    // Se clicar de novo, reseta para tirar outra
-    if (preview.style.display === 'block' && captureBtn.dataset.state === 'retake') {
-      preview.style.display = 'none';
-      document.getElementById('camera-container').style.display = 'block';
-      captureBtn.innerText = "Tirar Foto";
-      captureBtn.dataset.state = 'capture';
-      fotoBase64 = null;
-    } else {
-      captureBtn.dataset.state = 'retake';
-    }
-  });
-
-  function checkin() {
-    const vendedor = document.getElementById("vendedor").value;
-    const id_cliente = document.getElementById("id_cliente").value;
-    const btnSubmit = document.getElementById("submit-btn");
-
-    if (!vendedor || !id_cliente || !fotoBase64) {
-      alert("Preencha todos os campos e tire a foto!");
+    if (fotoBase64) {
+      fotoBase64 = null; preview.style.display = 'none'; video.style.display = 'block';
+      captureBtn.innerText = "📸 Tirar Foto";
       return;
     }
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    fotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
+    preview.src = fotoBase64; preview.style.display = 'block'; video.style.display = 'none';
+    captureBtn.innerText = "🔄 Tirar Outra";
+  });
 
-    btnSubmit.disabled = true;
-    btnSubmit.innerText = "Enviando...";
+  async function checkin() {
+    const v = document.getElementById('vendedor').value;
+    const r = selectRota.value;
+    const c = selectCliente.value;
+    if (!v || !r || !c || !fotoBase64) return alert("Preencha tudo!");
 
-    navigator.geolocation.getCurrentPosition(position => {
-      const agora = new Date();
-      const payload = {
-        vendedor: vendedor,
-        id_cliente: id_cliente,
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        foto: fotoBase64, // A foto vai aqui
-        data: agora.toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }),
-        horario: agora.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false }),
-        origem: "WEB_GPS_FOTO"
-      };
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true; btn.innerText = "Enviando...";
 
-      fetch("https://andresalvi.app.n8n.cloud/webhook-test/check-in", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      })
-      .then(response => {
-        if (response.ok) alert("Check-in e foto enviados!");
-        else alert("Erro no servidor.");
-      })
-      .catch(() => alert("Erro de conexão."))
-      .finally(() => {
-        btnSubmit.disabled = false;
-        btnSubmit.innerText = "Fazer Check-in";
-      });
-    }, err => alert("Erro GPS: Ative a localização."), { enableHighAccuracy: true });
+    navigator.geolocation.getCurrentPosition(async pos => {
+      const payload = { vendedor: v, rota: r, id_cliente: c, latitude: pos.coords.latitude, longitude: pos.coords.longitude, foto: fotoBase64, data: new Date().toLocaleDateString('sv-SE'), horario: new Date().toLocaleTimeString('pt-BR') };
+      try {
+        await fetch(scriptURL, { method: "POST", body: JSON.stringify(payload), mode: 'no-cors' });
+        alert("✅ Sucesso!"); location.reload();
+      } catch (e) { alert("Erro ao enviar"); btn.disabled = false; }
+    }, () => { alert("GPS necessário"); btn.disabled = false; });
   }
 
-  initCamera();
+  window.onload = () => { carregarDados(); startCamera(); };
 </script>
 </body>
 </html>
