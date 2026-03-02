@@ -21,6 +21,10 @@
     .btn-capture { background-color: #4b5563; color: white; margin-bottom: 10px; }
     .btn-submit { background-color: #00008B; color: white; }
     .dev-footer { margin-top: 20px; font-size: 0.65rem; color: #9ca3af; text-transform: uppercase; }
+    .autocomplete-wrapper { position: relative; width: 100%; }
+    .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #d1d5db; border-top: none; border-radius: 0 0 4px 4px; max-height: 180px; overflow-y: auto; z-index: 100; list-style: none; margin-top: -15px; display: none; }
+    .autocomplete-list li { padding: 10px 14px; font-size: 0.95rem; cursor: pointer; color: #333; }
+    .autocomplete-list li:hover, .autocomplete-list li.active { background-color: #e8eaf6; }
   </style>
 </head>
 <body>
@@ -30,13 +34,22 @@
   <h2>Check-in de Visita</h2>
 
   <label>Vendedor:</label>
-  <select id="select_vendedor"><option data-placeholder="true">Carregando...</option></select>
-  
+  <div class="autocomplete-wrapper">
+    <input id="vendedor" type="text" placeholder="Digite ou selecione o vendedor" autocomplete="off" oninput="filtrarOpcoes('vendedor')" onfocus="abrirLista('vendedor')" onblur="fecharLista('vendedor')">
+    <ul id="vendedor-list" class="autocomplete-list"></ul>
+  </div>
+
   <label>Rota:</label>
-  <select id="select_rota"><option data-placeholder="true">Aguardando Vendedor...</option></select>
+  <div class="autocomplete-wrapper">
+    <input id="select_rota" type="text" placeholder="Selecione o vendedor primeiro" autocomplete="off" disabled oninput="filtrarOpcoes('select_rota')" onfocus="abrirLista('select_rota')" onblur="fecharLista('select_rota')">
+    <ul id="select_rota-list" class="autocomplete-list"></ul>
+  </div>
 
   <label>Cliente:</label>
-  <select id="id_cliente"><option data-placeholder="true">Aguardando Rota...</option></select>
+  <div class="autocomplete-wrapper">
+    <input id="id_cliente" type="text" placeholder="Selecione a rota primeiro" autocomplete="off" disabled oninput="filtrarOpcoes('id_cliente')" onfocus="abrirLista('id_cliente')" onblur="fecharLista('id_cliente')">
+    <ul id="id_cliente-list" class="autocomplete-list"></ul>
+  </div>
 
   <div id="camera-wrapper">
     <video id="video" autoplay playsinline></video>
@@ -50,58 +63,127 @@
 <footer class="dev-footer">Desenvolvido por André Salvi</footer>
 
 <script>
+  const googleScriptURL = "https://script.google.com";
   const n8nWebhookURL = "https://andresalvi.app.n8n.cloud";
+
+  const video = document.getElementById('video');
+  const preview = document.getElementById('photo-preview');
+  const captureBtn = document.getElementById('capture-btn');
+  const cameraError = document.getElementById('camera-error');
+  const submitBtn = document.getElementById('submit-btn');
+
   let dadosGerais = {};
   let fotoBase64 = null;
-  let ssVendedor, ssRota, ssCliente;
+  let gpsBloqueado = false;
 
-  function initSlimSelect() {
-    ssVendedor = new SlimSelect({ select: '#select_vendedor', events: { afterChange: () => atualizarRotas() } });
-    ssRota = new SlimSelect({ select: '#select_rota', events: { afterChange: () => atualizarClientes() } });
-    ssCliente = new SlimSelect({ select: '#id_cliente' });
+  // --- Autocomplete Engine ---
+
+  const opcoesDisponiveis = { vendedor: [], select_rota: [], id_cliente: [] };
+  const valoresSelecionados = { vendedor: null, select_rota: null, id_cliente: null };
+
+  function popularLista(id, opcoes) {
+    opcoesDisponiveis[id] = opcoes;
+    const input = document.getElementById(id);
+    input.value = '';
+    input.disabled = opcoes.length === 0;
+    input.placeholder = opcoes.length === 0
+      ? (id === 'select_rota' ? 'Selecione o vendedor primeiro' : id === 'id_cliente' ? 'Selecione a rota primeiro' : 'Carregando...')
+      : (id === 'vendedor' ? 'Digite ou selecione o vendedor' : id === 'select_rota' ? 'Digite ou selecione a rota' : 'Digite ou selecione o cliente');
+    valoresSelecionados[id] = null;
+    renderizarLista(id, opcoes);
   }
 
-  // FUNÇÃO CORRIGIDA: Usa google.script.run para evitar erro de CORS
-  function carregarDados() {
-    google.script.run
-      .withSuccessHandler(function(dados) {
-        dadosGerais = dados;
-        const vendedores = Object.keys(dadosGerais).sort().map(v => ({text: v, value: v}));
-        ssVendedor.setData([{text: 'Selecione o Vendedor', placeholder: true}, ...vendedores]);
-      })
-      .withFailureHandler(function(err) {
-        alert("Erro ao ler planilha: " + err);
-      })
-      .buscarDadosCompletos();
+  function renderizarLista(id, opcoes) {
+    const lista = document.getElementById(id + '-list');
+    lista.innerHTML = '';
+    opcoes.forEach(op => {
+      const li = document.createElement('li');
+      li.textContent = op;
+      li.addEventListener('mousedown', () => selecionarOpcao(id, op));
+      lista.appendChild(li);
+    });
   }
 
-  function atualizarRotas() {
-    const v = document.getElementById('select_vendedor').value;
-    const rotasArr = (v && dadosGerais[v]) ? Object.keys(dadosGerais[v]).sort() : [];
-    ssRota.setData([{text: 'Selecione a Rota', placeholder: true}, ...rotasArr.map(r => ({text: r, value: r}))]);
-    ssCliente.setData([{text: 'Aguardando Rota...', placeholder: true}]);
+  function filtrarOpcoes(id) {
+    const input = document.getElementById(id);
+    const termo = input.value.toLowerCase();
+    const filtradas = opcoesDisponiveis[id].filter(o => o.toLowerCase().includes(termo));
+    renderizarLista(id, filtradas);
+    abrirLista(id);
+    valoresSelecionados[id] = null;
+
+    // Limpa dependentes ao digitar
+    if (id === 'vendedor') {
+      popularLista('select_rota', []);
+      popularLista('id_cliente', []);
+    } else if (id === 'select_rota') {
+      popularLista('id_cliente', []);
+    }
   }
 
-  function atualizarClientes() {
-    const v = document.getElementById('select_vendedor').value;
-    const r = document.getElementById('select_rota').value;
-    const clientesArr = (v && r && dadosGerais[v][r]) ? dadosGerais[v][r].sort() : [];
-    ssCliente.setData([{text: 'Selecione o Cliente', placeholder: true}, ...clientesArr.map(c => ({text: c, value: c}))]);
+  function abrirLista(id) {
+    const lista = document.getElementById(id + '-list');
+    if (opcoesDisponiveis[id].length > 0) lista.style.display = 'block';
   }
+
+  function fecharLista(id) {
+    setTimeout(() => {
+      document.getElementById(id + '-list').style.display = 'none';
+      // Se o usuário saiu sem selecionar, restaura valor anterior ou limpa
+      const input = document.getElementById(id);
+      if (!valoresSelecionados[id]) input.value = '';
+    }, 150);
+  }
+
+  function selecionarOpcao(id, valor) {
+    document.getElementById(id).value = valor;
+    document.getElementById(id + '-list').style.display = 'none';
+    valoresSelecionados[id] = valor;
+
+    if (id === 'vendedor') {
+      const rotas = Object.keys(dadosGerais[valor] || {}).sort();
+      popularLista('select_rota', rotas);
+      popularLista('id_cliente', []);
+    } else if (id === 'select_rota') {
+      const vendedor = valoresSelecionados['vendedor'];
+      const clientes = (dadosGerais[vendedor] && dadosGerais[vendedor][valor])
+        ? [...dadosGerais[vendedor][valor]].sort()
+        : [];
+      popularLista('id_cliente', clientes);
+    }
+  }
+
+  // --- Carregar dados ---
+
+  async function carregarDados() {
+    try {
+      const response = await fetch(googleScriptURL);
+      dadosGerais = await response.json();
+      const vendedores = Object.keys(dadosGerais).sort();
+      popularLista('vendedor', vendedores);
+    } catch (e) {
+      document.getElementById('vendedor').placeholder = 'Erro ao carregar';
+    }
+  }
+
+  // --- Câmera ---
 
   async function startCamera() {
+    cameraError.style.display = 'none';
+    video.style.display = 'block';
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-      document.getElementById('video').srcObject = stream;
-    } catch (err) { console.log("Erro câmera"); }
+      video.srcObject = stream;
+    } catch (err) {
+      video.style.display = 'none';
+      cameraError.style.display = 'block';
+    }
   }
 
-  document.getElementById('capture-btn').addEventListener('click', () => {
-    const video = document.getElementById('video');
-    const preview = document.getElementById('photo-preview');
+  captureBtn.addEventListener('click', () => {
     if (fotoBase64) {
       fotoBase64 = null; preview.style.display = 'none'; video.style.display = 'block';
-      document.getElementById('capture-btn').innerText = "📸 Tirar Foto";
+      captureBtn.innerText = "📸 Tirar Foto";
       return;
     }
     const canvas = document.createElement('canvas');
@@ -109,29 +191,58 @@
     canvas.getContext('2d').drawImage(video, 0, 0);
     fotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
     preview.src = fotoBase64; preview.style.display = 'block'; video.style.display = 'none';
-    document.getElementById('capture-btn').innerText = "🔄 Tirar Outra";
+    captureBtn.innerText = "🔄 Tirar Outra";
   });
 
-  function checkin() {
-    const v = document.getElementById('select_vendedor').value;
-    const r = document.getElementById('select_rota').value;
-    const c = document.getElementById('id_cliente').value;
-    const btn = document.getElementById('submit-btn');
+  // --- Check-in ---
 
-    if (!v || !r || !c || !fotoBase64) return alert("Preencha tudo!");
-    btn.disabled = true; btn.innerText = "Enviando...";
+  async function checkin() {
+    const v = valoresSelecionados['vendedor'];
+    const r = valoresSelecionados['select_rota'];
+    const c = valoresSelecionados['id_cliente'];
+
+    if (!v || !r || !c || !fotoBase64) return alert("Preencha tudo e tire a foto!");
+
+    if (gpsBloqueado) {
+      submitBtn.classList.remove('btn-gps-error');
+      submitBtn.innerText = "Tentando GPS...";
+    } else {
+      submitBtn.disabled = true;
+      submitBtn.innerText = "Enviando...";
+    }
 
     navigator.geolocation.getCurrentPosition(async pos => {
-      const payload = { vendedor: v, rota: r, cliente: c, latitude: pos.coords.latitude, longitude: pos.coords.longitude, foto: fotoBase64, data: new Date().toLocaleDateString('sv-SE'), horario: new Date().toLocaleTimeString('pt-BR') };
+      gpsBloqueado = false;
+      const payload = {
+        vendedor: v, rota: r, cliente: c,
+        latitude: pos.coords.latitude, longitude: pos.coords.longitude,
+        foto: fotoBase64, data: new Date().toLocaleDateString('sv-SE'),
+        horario: new Date().toLocaleTimeString('pt-BR'), origem: "WEBAPP_DIRECT"
+      };
       try {
-        await fetch(n8nWebhookURL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-        alert("✅ Sucesso!");
-        location.reload();
-      } catch (e) { alert("Erro n8n"); btn.disabled = false; }
-    }, () => { alert("GPS necessário"); btn.disabled = false; }, { enableHighAccuracy: true });
+        const response = await fetch(n8nWebhookURL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (response.ok) {
+          alert("✅ Check-in enviado com sucesso!");
+          location.reload();
+        } else { throw new Error(); }
+      } catch (e) {
+        alert("Erro ao conectar com n8n.");
+        submitBtn.disabled = false; submitBtn.innerText = "Finalizar Check-in";
+      }
+    }, (err) => {
+      gpsBloqueado = true;
+      submitBtn.disabled = false;
+      submitBtn.innerText = "📍 Liberar GPS no Cadeado";
+      submitBtn.classList.add('btn-gps-error');
+      alert("GPS Bloqueado! 📍\nClique no cadeado da URL, permita a 'Localização' e clique no botão vermelho para tentar de novo.");
+    }, { enableHighAccuracy: true, timeout: 10000 });
   }
 
-  window.onload = () => { initSlimSelect(); carregarDados(); startCamera(); };
+  window.onload = () => { carregarDados(); startCamera(); };
 </script>
 </body>
 </html>
