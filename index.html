@@ -5,51 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Check-in Cliente</title>
   <style>
-    /* CSS com Azul Marinho #00008B e Bordas 4px */
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
     body { background-color: #f0f2f5; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; position: relative; }
-    
-    .container {
-      background-color: #ffffff;
-      padding: 30px 25px;
-      border-radius: 4px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-      width: 100%;
-      max-width: 400px;
-      text-align: center;
-      z-index: 1;
-    }
-
+    .container { background-color: #ffffff; padding: 30px 25px; border-radius: 4px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); width: 100%; max-width: 400px; text-align: center; z-index: 1; }
     .logo { width: 120px; margin-bottom: 20px; height: auto; }
     h2 { font-size: 1.3rem; color: #1a1a2e; margin-bottom: 20px; font-weight: 600; }
     label { display: block; text-align: left; font-size: 0.8rem; color: #666; margin-bottom: 4px; margin-left: 2px; }
-
-    input, select {
-      width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #d1d5db; border-radius: 4px;
-      font-size: 16px; background-color: #fafafa; color: #333; outline: none; appearance: none;
-      transition: border-color 0.2s;
-    }
-
+    input, select { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 16px; background-color: #fafafa; color: #333; outline: none; appearance: none; transition: border-color 0.2s; }
     input:focus, select:focus { border-color: #00008B; box-shadow: 0 0 0 1px #00008B; }
-
-    select {
-      background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org" width="20" height="20" viewBox="0 0 20 20"><path fill="%2300008B" d="M7 7l3-3 3 3m0 6l-3 3-3-3"/></svg>');
-      background-repeat: no-repeat; background-position: right 12px center; cursor: pointer;
-    }
-
-    #camera-wrapper {
-      width: 100%; background: #000; border-radius: 4px; overflow: hidden; margin-bottom: 15px;
-      aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center; border: 1px solid #d1d5db;
-    }
-
+    select { background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org" width="20" height="20" viewBox="0 0 20 20"><path fill="%2300008B" d="M7 7l3-3 3 3m0 6l-3 3-3-3"/></svg>'); background-repeat: no-repeat; background-position: right 12px center; cursor: pointer; }
+    
+    #camera-wrapper { width: 100%; background: #000; border-radius: 4px; overflow: hidden; margin-bottom: 15px; aspect-ratio: 4/3; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid #d1d5db; color: white; position: relative; }
     video, #photo-preview { width: 100%; height: 100%; object-fit: cover; }
     #photo-preview { display: none; }
+    
+    /* Estilo do aviso de erro dentro da câmera */
+    #camera-error { display: none; padding: 20px; text-align: center; z-index: 10; }
+    #camera-error p { font-size: 0.85rem; margin-bottom: 10px; color: #ffbcbc; }
+    .btn-retry { background: #00008B; color: white; border: 1px solid white; padding: 8px 15px; border-radius: 4px; font-size: 0.8rem; width: auto; }
 
     button { width: 100%; padding: 15px; border: none; border-radius: 4px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.2s; }
     .btn-capture { background-color: #4b5563; color: white; margin-bottom: 10px; }
     .btn-submit { background-color: #00008B; color: white; }
     button:disabled { background-color: #cbd5e1; cursor: not-allowed; }
-
     .dev-footer { margin-top: 20px; font-size: 0.65rem; color: #9ca3af; letter-spacing: 0.5px; text-transform: uppercase; }
   </style>
 </head>
@@ -58,14 +36,11 @@
 <div class="container">
   <img src="imagem.png" alt="Logo" class="logo">
   <h2>Check-in de Visita</h2>
-
   <input id="vendedor" type="text" placeholder="Nome do Vendedor">
-  
   <label>Rota:</label>
   <select id="select_rota" onchange="atualizarClientes()">
     <option value="">Carregando rotas...</option>
   </select>
-
   <label>Cliente:</label>
   <select id="id_cliente" disabled>
     <option value="">Selecione a rota primeiro</option>
@@ -74,30 +49,31 @@
   <div id="camera-wrapper">
     <video id="video" autoplay playsinline></video>
     <img id="photo-preview">
+    <div id="camera-error">
+      <p>Câmera bloqueada ou não encontrada.</p>
+      <button type="button" class="btn-retry" onclick="startCamera()">🔓 Tentar Novamente / Liberar</button>
+    </div>
   </div>
   
   <button type="button" class="btn-capture" id="capture-btn">📸 Tirar Foto</button>
   <button onclick="checkin()" class="btn-submit" id="submit-btn" style="margin-top:10px">Finalizar Check-in</button>
 </div>
 
-<footer class="dev-footer">
-    Desenvolvido por André Salvi
-</footer>
+<footer class="dev-footer">Desenvolvido por André Salvi</footer>
 
 <script>
-  // CONFIGURAÇÕES
-  const googleScriptURL = "https://script.google.com/macros/s/AKfycbyYXOW9rpUp-5m7bKKciiePr5RXhYdELswu44FXABPYCq2MDhBoOzPl_cve6g6CGB1A/exec";
-  const n8nWebhookURL = "https://andresalvi.app.n8n.cloud/webhook/check-in";
+  const googleScriptURL = "https://script.google.com";
+  const n8nWebhookURL = "https://andresalvi.app.n8n.cloud";
 
   const video = document.getElementById('video');
   const preview = document.getElementById('photo-preview');
   const captureBtn = document.getElementById('capture-btn');
+  const cameraError = document.getElementById('camera-error');
   const selectRota = document.getElementById('select_rota');
   const selectCliente = document.getElementById('id_cliente');
   let dadosGerais = {};
   let fotoBase64 = null;
 
-  // 1. Busca dados do Google
   async function carregarDados() {
     try {
       const response = await fetch(googleScriptURL);
@@ -108,9 +84,7 @@
         opt.value = rota; opt.innerHTML = rota;
         selectRota.appendChild(opt);
       });
-    } catch (e) {
-      selectRota.innerHTML = '<option value="">Erro ao carregar</option>';
-    }
+    } catch (e) { selectRota.innerHTML = '<option value="">Erro ao carregar</option>'; }
   }
 
   function atualizarClientes() {
@@ -123,25 +97,23 @@
         opt.value = c; opt.innerHTML = c;
         selectCliente.appendChild(opt);
       });
-    } else {
-      selectCliente.disabled = true;
-    }
+    } else { selectCliente.disabled = true; }
   }
 
-  // 2. Lógica de Câmera (Melhorada para reset e permissão)
+  // NOVA LÓGICA DE START CAMERA
   async function startCamera() {
+    cameraError.style.display = 'none';
+    video.style.display = 'block';
+    
     try {
-      // Força a tentativa de acesso à mídia a cada chamada
-      const constraints = { video: { facingMode: "environment" } };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
       video.srcObject = stream;
     } catch (err) {
-      console.error("Erro na câmera: ", err);
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        alert("Acesso Negado! 📷\nO navegador bloqueou a câmera. Clique no cadeado (ao lado da URL) e mude 'Câmera' para 'Permitir', depois atualize a página.");
-      } else {
-        alert("Não foi possível acessar a câmera. Verifique se ela está sendo usada por outro app.");
-      }
+      console.warn("Erro câmera:", err.name);
+      video.style.display = 'none';
+      cameraError.style.display = 'block';
+      // Se for bloqueio salvo, o navegador não abre o popup. 
+      // O botão "Tentar Novamente" chama esta função de novo após o usuário mexer no cadeado.
     }
   }
 
@@ -159,45 +131,33 @@
     captureBtn.innerText = "🔄 Tirar Outra";
   });
 
-  // 3. Envio Direto para o n8n
   async function checkin() {
     const v = document.getElementById('vendedor').value;
     const r = selectRota.value;
     const c = selectCliente.value;
     const btn = document.getElementById('submit-btn');
-
     if (!v || !r || !c || !fotoBase64) return alert("Preencha tudo e tire a foto!");
-
     btn.disabled = true; btn.innerText = "Enviando...";
 
     navigator.geolocation.getCurrentPosition(async pos => {
       const payload = {
-        vendedor: v,
-        rota: r,
-        cliente: c,
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
-        foto: fotoBase64,
-        data: new Date().toLocaleDateString('sv-SE'),
-        horario: new Date().toLocaleTimeString('pt-BR'),
-        origem: "WEBAPP_DIRECT"
+        vendedor: v, rota: r, cliente: c,
+        latitude: pos.coords.latitude, longitude: pos.coords.longitude,
+        foto: fotoBase64, data: new Date().toLocaleDateString('sv-SE'),
+        horario: new Date().toLocaleTimeString('pt-BR'), origem: "WEBAPP_DIRECT"
       };
-
       try {
         const response = await fetch(n8nWebhookURL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
-
         if (response.ok) {
           alert("✅ Check-in enviado com sucesso!");
           location.reload();
-        } else {
-          throw new Error();
-        }
+        } else { throw new Error(); }
       } catch (e) {
-        alert("Erro ao conectar com n8n. Tente novamente.");
+        alert("Erro ao conectar com n8n.");
         btn.disabled = false; btn.innerText = "Finalizar Check-in";
       }
     }, () => {
@@ -206,11 +166,7 @@
     }, { enableHighAccuracy: true });
   }
 
-  // Aciona a câmera toda vez que a página carrega/atualiza
-  window.onload = () => { 
-    carregarDados(); 
-    startCamera(); 
-  };
+  window.onload = () => { carregarDados(); startCamera(); };
 </script>
 </body>
 </html>
