@@ -86,8 +86,8 @@
 
 <script>
   // CONFIGURAÇÕES
-  const googleScriptURL = "https://script.google.com/macros/s/AKfycbyYXOW9rpUp-5m7bKKciiePr5RXhYdELswu44FXABPYCq2MDhBoOzPl_cve6g6CGB1A/exec";
-  const n8nWebhookURL = "https://andresalvi.app.n8n.cloud/webhook/check-in";
+  const googleScriptURL = "https://script.google.com";
+  const n8nWebhookURL = "https://andresalvi.app.n8n.cloud";
 
   const video = document.getElementById('video');
   const preview = document.getElementById('photo-preview');
@@ -97,7 +97,7 @@
   let dadosGerais = {};
   let fotoBase64 = null;
 
-  // 1. Busca dados do Google (Apenas consulta)
+  // 1. Busca dados do Google
   async function carregarDados() {
     try {
       const response = await fetch(googleScriptURL);
@@ -128,12 +128,21 @@
     }
   }
 
-  // 2. Lógica de Câmera
+  // 2. Lógica de Câmera (Melhorada para reset e permissão)
   async function startCamera() {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      // Força a tentativa de acesso à mídia a cada chamada
+      const constraints = { video: { facingMode: "environment" } };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       video.srcObject = stream;
-    } catch (err) { alert("Câmera não detectada."); }
+    } catch (err) {
+      console.error("Erro na câmera: ", err);
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        alert("Acesso Negado! 📷\nO navegador bloqueou a câmera. Clique no cadeado (ao lado da URL) e mude 'Câmera' para 'Permitir', depois atualize a página.");
+      } else {
+        alert("Não foi possível acessar a câmera. Verifique se ela está sendo usada por outro app.");
+      }
+    }
   }
 
   captureBtn.addEventListener('click', () => {
@@ -145,7 +154,7 @@
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth; canvas.height = video.videoHeight;
     canvas.getContext('2d').drawImage(video, 0, 0);
-    fotoBase64 = canvas.toDataURL('image/jpeg', 0.6); // Comprimido para n8n
+    fotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
     preview.src = fotoBase64; preview.style.display = 'block'; video.style.display = 'none';
     captureBtn.innerText = "🔄 Tirar Outra";
   });
@@ -162,7 +171,6 @@
     btn.disabled = true; btn.innerText = "Enviando...";
 
     navigator.geolocation.getCurrentPosition(async pos => {
-      // OBJETO COMPLETO QUE SERÁ RECEBIDO NO n8n
       const payload = {
         vendedor: v,
         rota: r,
@@ -198,7 +206,11 @@
     }, { enableHighAccuracy: true });
   }
 
-  window.onload = () => { carregarDados(); startCamera(); };
+  // Aciona a câmera toda vez que a página carrega/atualiza
+  window.onload = () => { 
+    carregarDados(); 
+    startCamera(); 
+  };
 </script>
 </body>
 </html>
