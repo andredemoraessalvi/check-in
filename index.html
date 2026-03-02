@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Check-in Cliente</title>
-  <!-- SlimSelect CORRIGIDO -->
   <link href="https://unpkg.com" rel="stylesheet">
   <script src="https://unpkg.com"></script>
   <style>
@@ -31,7 +30,7 @@
   <h2>Check-in de Visita</h2>
 
   <label>Vendedor:</label>
-  <select id="select_vendedor"><option data-placeholder="true">Carregando vendedores...</option></select>
+  <select id="select_vendedor"><option data-placeholder="true">Carregando...</option></select>
   
   <label>Rota:</label>
   <select id="select_rota"><option data-placeholder="true">Aguardando Vendedor...</option></select>
@@ -51,43 +50,35 @@
 <footer class="dev-footer">Desenvolvido por André Salvi</footer>
 
 <script>
-  // COLE AQUI SUA URL DE DEPLOY DO GOOGLE
-  const googleScriptURL = "https://script.google.com/macros/s/AKfycbyYXOW9rpUp-5m7bKKciiePr5RXhYdELswu44FXABPYCq2MDhBoOzPl_cve6g6CGB1A/exec";
-  const n8nWebhookURL = "https://andresalvi.app.n8n.cloud/webhook/check-in";
-
+  const n8nWebhookURL = "https://andresalvi.app.n8n.cloud";
   let dadosGerais = {};
   let fotoBase64 = null;
   let ssVendedor, ssRota, ssCliente;
 
   function initSlimSelect() {
-    ssVendedor = new SlimSelect({ 
-      select: '#select_vendedor', 
-      events: { afterChange: () => atualizarRotas() } 
-    });
-    ssRota = new SlimSelect({ 
-      select: '#select_rota', 
-      events: { afterChange: () => atualizarClientes() } 
-    });
+    ssVendedor = new SlimSelect({ select: '#select_vendedor', events: { afterChange: () => atualizarRotas() } });
+    ssRota = new SlimSelect({ select: '#select_rota', events: { afterChange: () => atualizarClientes() } });
     ssCliente = new SlimSelect({ select: '#id_cliente' });
   }
 
-  async function carregarDados() {
-    try {
-      const response = await fetch(googleScriptURL);
-      dadosGerais = await response.json();
-      const vendedores = Object.keys(dadosGerais).sort().map(v => ({text: v, value: v}));
-      ssVendedor.setData([{text: 'Selecione o Vendedor', placeholder: true}, ...vendedores]);
-    } catch (e) { 
-      console.error(e);
-      alert("Erro ao carregar dados. Verifique a URL do Script."); 
-    }
+  // FUNÇÃO CORRIGIDA: Usa google.script.run para evitar erro de CORS
+  function carregarDados() {
+    google.script.run
+      .withSuccessHandler(function(dados) {
+        dadosGerais = dados;
+        const vendedores = Object.keys(dadosGerais).sort().map(v => ({text: v, value: v}));
+        ssVendedor.setData([{text: 'Selecione o Vendedor', placeholder: true}, ...vendedores]);
+      })
+      .withFailureHandler(function(err) {
+        alert("Erro ao ler planilha: " + err);
+      })
+      .buscarDadosCompletos();
   }
 
   function atualizarRotas() {
     const v = document.getElementById('select_vendedor').value;
     const rotasArr = (v && dadosGerais[v]) ? Object.keys(dadosGerais[v]).sort() : [];
-    const options = rotasArr.map(r => ({text: r, value: r}));
-    ssRota.setData([{text: 'Selecione a Rota', placeholder: true}, ...options]);
+    ssRota.setData([{text: 'Selecione a Rota', placeholder: true}, ...rotasArr.map(r => ({text: r, value: r}))]);
     ssCliente.setData([{text: 'Aguardando Rota...', placeholder: true}]);
   }
 
@@ -95,24 +86,22 @@
     const v = document.getElementById('select_vendedor').value;
     const r = document.getElementById('select_rota').value;
     const clientesArr = (v && r && dadosGerais[v][r]) ? dadosGerais[v][r].sort() : [];
-    const options = clientesArr.map(c => ({text: c, value: c}));
-    ssCliente.setData([{text: 'Selecione o Cliente', placeholder: true}, ...options]);
+    ssCliente.setData([{text: 'Selecione o Cliente', placeholder: true}, ...clientesArr.map(c => ({text: c, value: c}))]);
   }
 
   async function startCamera() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
       document.getElementById('video').srcObject = stream;
-    } catch (err) { alert("Câmera não detectada ou permissão negada."); }
+    } catch (err) { console.log("Erro câmera"); }
   }
 
   document.getElementById('capture-btn').addEventListener('click', () => {
     const video = document.getElementById('video');
     const preview = document.getElementById('photo-preview');
-    const btn = document.getElementById('capture-btn');
     if (fotoBase64) {
       fotoBase64 = null; preview.style.display = 'none'; video.style.display = 'block';
-      btn.innerText = "📸 Tirar Foto";
+      document.getElementById('capture-btn').innerText = "📸 Tirar Foto";
       return;
     }
     const canvas = document.createElement('canvas');
@@ -120,31 +109,26 @@
     canvas.getContext('2d').drawImage(video, 0, 0);
     fotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
     preview.src = fotoBase64; preview.style.display = 'block'; video.style.display = 'none';
-    btn.innerText = "🔄 Tirar Outra";
+    document.getElementById('capture-btn').innerText = "🔄 Tirar Outra";
   });
 
-  async function checkin() {
+  function checkin() {
     const v = document.getElementById('select_vendedor').value;
     const r = document.getElementById('select_rota').value;
     const c = document.getElementById('id_cliente').value;
     const btn = document.getElementById('submit-btn');
 
-    if (!v || !r || !c || !fotoBase64) return alert("Preencha todos os campos e tire a foto!");
+    if (!v || !r || !c || !fotoBase64) return alert("Preencha tudo!");
     btn.disabled = true; btn.innerText = "Enviando...";
 
     navigator.geolocation.getCurrentPosition(async pos => {
-      const payload = { 
-        vendedor: v, rota: r, cliente: c, 
-        latitude: pos.coords.latitude, longitude: pos.coords.longitude, 
-        foto: fotoBase64, data: new Date().toLocaleDateString('sv-SE'), 
-        horario: new Date().toLocaleTimeString('pt-BR') 
-      };
+      const payload = { vendedor: v, rota: r, cliente: c, latitude: pos.coords.latitude, longitude: pos.coords.longitude, foto: fotoBase64, data: new Date().toLocaleDateString('sv-SE'), horario: new Date().toLocaleTimeString('pt-BR') };
       try {
-        const res = await fetch(n8nWebhookURL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-        if (res.ok) { alert("✅ Check-in realizado!"); location.reload(); }
-        else { throw new Error(); }
-      } catch (e) { alert("Erro ao enviar para o servidor."); btn.disabled = false; btn.innerText = "Finalizar Check-in"; }
-    }, () => { alert("GPS obrigatório."); btn.disabled = false; btn.innerText = "Finalizar Check-in"; }, { enableHighAccuracy: true });
+        await fetch(n8nWebhookURL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        alert("✅ Sucesso!");
+        location.reload();
+      } catch (e) { alert("Erro n8n"); btn.disabled = false; }
+    }, () => { alert("GPS necessário"); btn.disabled = false; }, { enableHighAccuracy: true });
   }
 
   window.onload = () => { initSlimSelect(); carregarDados(); startCamera(); };
