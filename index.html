@@ -72,7 +72,6 @@
   const video = document.getElementById('video');
   const preview = document.getElementById('photo-preview');
   const captureBtn = document.getElementById('capture-btn');
-  const cameraError = document.getElementById('camera-error');
   const submitBtn = document.getElementById('submit-btn');
 
   let dadosGerais = {};
@@ -172,16 +171,28 @@
   // --- Câmera ---
 
   async function startCamera() {
-    cameraError.style.display = 'none';
     video.style.display = 'block';
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
       video.srcObject = stream;
     } catch (err) {
       video.style.display = 'none';
-      cameraError.style.display = 'block';
     }
   }
+
+  captureBtn.addEventListener('click', () => {
+    if (fotoBase64) {
+      fotoBase64 = null; preview.style.display = 'none'; video.style.display = 'block';
+      captureBtn.innerText = "📸 Tirar Foto";
+      return;
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    fotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
+    preview.src = fotoBase64; preview.style.display = 'block'; video.style.display = 'none';
+    captureBtn.innerText = "🔄 Tirar Outra";
+  });
 
   // --- Check-in ---
 
@@ -231,23 +242,7 @@
     }, { enableHighAccuracy: true, timeout: 10000 });
   }
 
-  window.onload = () => {
-    carregarDados();
-    startCamera();
-    captureBtn.addEventListener('click', () => {
-      if (fotoBase64) {
-        fotoBase64 = null; preview.style.display = 'none'; video.style.display = 'block';
-        captureBtn.innerText = "📸 Tirar Foto";
-        return;
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-      canvas.getContext('2d').drawImage(video, 0, 0);
-      fotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
-      preview.src = fotoBase64; preview.style.display = 'block'; video.style.display = 'none';
-      captureBtn.innerText = "🔄 Tirar Outra";
-    });
-  };
+  window.onload = () => { carregarDados(); startCamera(); };
 </script>
 </body>
 </html>
