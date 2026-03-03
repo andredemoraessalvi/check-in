@@ -183,20 +183,6 @@
     }
   }
 
-  captureBtn.addEventListener('click', () => {
-    if (fotoBase64) {
-      fotoBase64 = null; preview.style.display = 'none'; video.style.display = 'block';
-      captureBtn.innerText = "📸 Tirar Foto";
-      return;
-    }
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-    canvas.getContext('2d').drawImage(video, 0, 0);
-    fotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
-    preview.src = fotoBase64; preview.style.display = 'block'; video.style.display = 'none';
-    captureBtn.innerText = "🔄 Tirar Outra";
-  });
-
   // --- Check-in ---
 
   async function checkin() {
@@ -245,7 +231,23 @@
     }, { enableHighAccuracy: true, timeout: 10000 });
   }
 
-  window.onload = () => { carregarDados(); startCamera(); };
+  window.onload = () => {
+    carregarDados();
+    startCamera();
+    captureBtn.addEventListener('click', () => {
+      if (fotoBase64) {
+        fotoBase64 = null; preview.style.display = 'none'; video.style.display = 'block';
+        captureBtn.innerText = "📸 Tirar Foto";
+        return;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      fotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
+      preview.src = fotoBase64; preview.style.display = 'block'; video.style.display = 'none';
+      captureBtn.innerText = "🔄 Tirar Outra";
+    });
+  };
 </script>
 </body>
 </html>
