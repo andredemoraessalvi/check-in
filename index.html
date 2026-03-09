@@ -28,6 +28,9 @@
   .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #d1d5db; border-top: none; border-radius: 0 0 4px 4px; max-height: 180px; overflow-y: auto; z-index: 100; list-style: none; display: none; }
   .autocomplete-list li { padding: 10px 14px; font-size: 0.95rem; cursor: pointer; color: #333; }
   .autocomplete-list li:hover { background-color: #e8eaf6; }
+
+  /* Badge de última seleção restaurada */
+  .restored-badge { font-size: 0.7rem; color: #6b7280; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 20px; padding: 3px 10px; display: inline-block; margin-bottom: 14px; }
   </style>
 </head>
 <body>
@@ -35,6 +38,10 @@
 <div class="container">
   <img src="imagem.png" alt="Logo" class="logo">
   <h2>Check-in de Visita</h2>
+
+  <div id="restored-notice" style="display:none">
+    <span class="restored-badge">🕘 Última seleção restaurada</span>
+  </div>
 
   <label>Vendedor:</label>
   <div class="autocomplete-wrapper">
@@ -77,6 +84,68 @@
   let dadosGerais = {};
   let fotoBase64 = null;
   let gpsBloqueado = false;
+
+  // --- LocalStorage helpers ---
+
+  const LS_KEY = 'checkin_ultima_selecao';
+
+  function salvarSelecao() {
+    const dados = {
+      vendedor: valoresSelecionados['vendedor'],
+      select_rota: valoresSelecionados['select_rota'],
+      id_cliente: valoresSelecionados['id_cliente']
+    };
+    // Só salva se ao menos o vendedor foi selecionado
+    if (dados.vendedor) {
+      localStorage.setItem(LS_KEY, JSON.stringify(dados));
+    }
+  }
+
+  function recuperarSelecao() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function limparSelecaoSalva() {
+    localStorage.removeItem(LS_KEY);
+  }
+
+  // Tenta restaurar as seleções após os dados estarem carregados
+  async function restaurarUltimaSelecao() {
+    const salvo = recuperarSelecao();
+    if (!salvo || !salvo.vendedor) return;
+
+    // Restaura vendedor
+    const vendedores = Object.keys(dadosGerais).sort();
+    if (!vendedores.includes(salvo.vendedor)) return;
+
+    await selecionarOpcao('vendedor', salvo.vendedor);
+
+    // Restaura rota
+    if (salvo.select_rota) {
+      const rotas = Object.keys(dadosGerais[salvo.vendedor] || {}).sort();
+      if (rotas.includes(salvo.select_rota)) {
+        await selecionarOpcao('select_rota', salvo.select_rota);
+
+        // Restaura cliente
+        if (salvo.id_cliente) {
+          const clientes = (dadosGerais[salvo.vendedor][salvo.select_rota] || []).slice().sort();
+          if (clientes.includes(salvo.id_cliente)) {
+            await selecionarOpcao('id_cliente', salvo.id_cliente);
+          }
+        }
+      }
+    }
+
+    // Mostra badge de restauração se pelo menos vendedor foi recuperado
+    if (valoresSelecionados['vendedor']) {
+      document.getElementById('restored-notice').style.display = 'block';
+    }
+  }
 
   // --- Autocomplete Engine ---
 
@@ -153,6 +222,9 @@
         : [];
       popularLista('id_cliente', clientes);
     }
+
+    // Salva no localStorage sempre que algo é selecionado
+    salvarSelecao();
   }
 
   // --- Carregar dados ---
@@ -163,6 +235,9 @@
       dadosGerais = await response.json();
       const vendedores = Object.keys(dadosGerais).sort();
       popularLista('vendedor', vendedores);
+
+      // Após carregar os dados, tenta restaurar a última seleção
+      await restaurarUltimaSelecao();
     } catch (e) {
       document.getElementById('vendedor').placeholder = 'Erro ao carregar';
     }
@@ -226,6 +301,8 @@
           body: JSON.stringify(payload)
         });
         if (response.ok) {
+          // Salva a seleção antes de recarregar para ser restaurada na próxima visita
+          salvarSelecao();
           alert("✅ Check-in enviado com sucesso!");
           location.reload();
         } else { throw new Error(); }
