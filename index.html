@@ -238,6 +238,16 @@
   // --- Carregar dados ---
 
   async function carregarDados() {
+    // Mostra o badge de carregando ANTES do fetch, se houver dados salvos
+    const salvo = recuperarSelecao();
+    if (salvo && salvo.vendedor) {
+      const notice = document.getElementById('restored-notice');
+      const badge = document.getElementById('restored-badge-text');
+      notice.style.display = 'block';
+      badge.className = 'loading-badge';
+      badge.textContent = '⏳ Carregando dados anteriores...';
+    }
+
     try {
       const response = await fetch(googleScriptURL);
       dadosGerais = await response.json();
