@@ -31,6 +31,9 @@
 
   /* Badge de última seleção restaurada */
   .restored-badge { font-size: 0.7rem; color: #6b7280; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 20px; padding: 3px 10px; display: inline-block; margin-bottom: 14px; }
+  .loading-badge { font-size: 0.7rem; color: #6b7280; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 20px; padding: 3px 10px; display: inline-block; margin-bottom: 14px; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .loading-badge { animation: pulse 1.2s ease-in-out infinite; }
   </style>
 </head>
 <body>
@@ -40,7 +43,7 @@
   <h2>Check-in de Visita</h2>
 
   <div id="restored-notice" style="display:none">
-    <span class="restored-badge">🕘 Última seleção restaurada</span>
+    <span id="restored-badge-text" class="loading-badge">⏳ Carregando dados anteriores...</span>
   </div>
 
   <label>Vendedor:</label>
@@ -119,19 +122,21 @@
     const salvo = recuperarSelecao();
     if (!salvo || !salvo.vendedor) return;
 
-    // Restaura vendedor
     const vendedores = Object.keys(dadosGerais).sort();
     if (!vendedores.includes(salvo.vendedor)) return;
 
+    // Mostra "Carregando dados anteriores..." antes de restaurar
+    const notice = document.getElementById('restored-notice');
+    const badge = document.getElementById('restored-badge-text');
+    notice.style.display = 'block';
+
     await selecionarOpcao('vendedor', salvo.vendedor);
 
-    // Restaura rota
     if (salvo.select_rota) {
       const rotas = Object.keys(dadosGerais[salvo.vendedor] || {}).sort();
       if (rotas.includes(salvo.select_rota)) {
         await selecionarOpcao('select_rota', salvo.select_rota);
 
-        // Restaura cliente
         if (salvo.id_cliente) {
           const clientes = (dadosGerais[salvo.vendedor][salvo.select_rota] || []).slice().sort();
           if (clientes.includes(salvo.id_cliente)) {
@@ -141,9 +146,12 @@
       }
     }
 
-    // Mostra badge de restauração se pelo menos vendedor foi recuperado
+    // Atualiza badge para "restaurado"
     if (valoresSelecionados['vendedor']) {
-      document.getElementById('restored-notice').style.display = 'block';
+      badge.className = 'restored-badge';
+      badge.textContent = '🕘 Última seleção restaurada';
+    } else {
+      notice.style.display = 'none';
     }
   }
 
